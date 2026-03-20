@@ -4,6 +4,15 @@ const ENV_VAR_RE = /^([A-Za-z_][A-Za-z0-9_]*=[^\s]* +)*/
 const UNPROXYABLE_COMMANDS = new Set([
   "cd", "source", ".", "export", "alias", "unset", "set", "shopt", "eval", "exec",
 ])
+const OPERATOR_RE = /(\s*(?:&&|\|\||[;&|])\s*)/
+
+function snipCommand(command: string): string {
+  const envPrefix = (command.match(ENV_VAR_RE) ?? [""])[0]
+  const bareCmd = command.slice(envPrefix.length).trim()
+  if (!bareCmd) return command
+  if (UNPROXYABLE_COMMANDS.has(bareCmd.split(/\s+/)[0])) return command
+  return `${envPrefix}snip ${bareCmd}`
+}
 
 export const toolExecuteBefore: NonNullable<Hooks["tool.execute.before"]> = async (input, output) => {
   if (input.tool !== "bash") return
@@ -12,18 +21,16 @@ export const toolExecuteBefore: NonNullable<Hooks["tool.execute.before"]> = asyn
   if (!command || typeof command !== "string") return
   if (command.startsWith("snip ")) return
 
-  // Split at first shell operator (space + && | ; | &), keeping operator+rest intact
-  const splitMatch = command.match(/^(.*?)( &&| [|]| ;|;)(.*)$/)
-  const firstPart = splitMatch ? splitMatch[1] : command
-  const rest = splitMatch ? splitMatch[2] + splitMatch[3] : ""
+  const segments = command.split(OPERATOR_RE)
 
-  // Extract leading env var prefix (e.g. "CGO_ENABLED=0 GOOS=linux ")
-  const envPrefix = (firstPart.match(ENV_VAR_RE) ?? [""])[0]
-  const bareCmd = firstPart.slice(envPrefix.length).trim()
+  if (segments.length === 1) {
+    output.args.command = snipCommand(command)
+    return
+  }
 
-  if (UNPROXYABLE_COMMANDS.has(bareCmd.split(/\s+/)[0])) return
-
-  output.args.command = `${envPrefix}snip ${bareCmd}${rest}`
+  output.args.command = segments
+    .map((segment) => OPERATOR_RE.test(segment) ? segment : snipCommand(segment))
+    .join("")
 }
 
 export const SnipPlugin: Plugin = async () => {
