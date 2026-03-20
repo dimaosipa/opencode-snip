@@ -31,19 +31,43 @@ describe("toolExecuteBefore", () => {
   it("should handle command with &&", async () => {
     mockOutput.args.command = "go test && go build"
     await toolExecuteBefore(mockInput, mockOutput)
-    expect(mockOutput.args.command).toBe("snip go test && go build")
+    expect(mockOutput.args.command).toBe("snip go test && snip go build")
   })
 
   it("should handle command with |", async () => {
     mockOutput.args.command = "git log | head"
     await toolExecuteBefore(mockInput, mockOutput)
-    expect(mockOutput.args.command).toBe("snip git log | head")
+    expect(mockOutput.args.command).toBe("snip git log | snip head")
   })
 
   it("should handle command with ;", async () => {
     mockOutput.args.command = "go test; go build"
     await toolExecuteBefore(mockInput, mockOutput)
-    expect(mockOutput.args.command).toBe("snip go test; go build")
+    expect(mockOutput.args.command).toBe("snip go test; snip go build")
+  })
+
+  it("should handle command with ||", async () => {
+    mockOutput.args.command = "test -f foo.txt || echo missing"
+    await toolExecuteBefore(mockInput, mockOutput)
+    expect(mockOutput.args.command).toBe("snip test -f foo.txt || snip echo missing")
+  })
+
+  it("should handle command with &", async () => {
+    mockOutput.args.command = "sleep 1 & sleep 2 &"
+    await toolExecuteBefore(mockInput, mockOutput)
+    expect(mockOutput.args.command).toBe("snip sleep 1 & snip sleep 2 &")
+  })
+
+  it("should handle mixed operators", async () => {
+    mockOutput.args.command = "go test && go build; go run"
+    await toolExecuteBefore(mockInput, mockOutput)
+    expect(mockOutput.args.command).toBe("snip go test && snip go build; snip go run")
+  })
+
+  it("should handle env vars with operators", async () => {
+    mockOutput.args.command = "FOO=bar go test && go build"
+    await toolExecuteBefore(mockInput, mockOutput)
+    expect(mockOutput.args.command).toBe("FOO=bar snip go test && snip go build")
   })
 
   it("should not double prefix already prefixed command", async () => {
@@ -102,10 +126,10 @@ describe("toolExecuteBefore", () => {
       expect(mockOutput.args.command).toBe("CGO_ENABLED=0 export FOO=bar")
     })
 
-    it("should skip cd when followed by &&", async () => {
+    it("should skip cd but snip chained command", async () => {
       mockOutput.args.command = "cd /tmp && ls"
       await toolExecuteBefore(mockInput, mockOutput)
-      expect(mockOutput.args.command).toBe("cd /tmp && ls")
+      expect(mockOutput.args.command).toBe("cd /tmp && snip ls")
     })
   })
 })
