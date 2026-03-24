@@ -90,6 +90,30 @@ describe("toolExecuteBefore", () => {
     expect(mockOutput.args.command).toBe(`${snipBin} go test`)
   })
 
+  it("should not double prefix with env var prefix (bare)", async () => {
+    mockOutput.args.command = "FOO=bar snip go test"
+    await toolExecuteBefore(mockInput, mockOutput)
+    expect(mockOutput.args.command).toBe("FOO=bar snip go test")
+  })
+
+  it("should not double prefix with env var prefix (absolute path)", async () => {
+    mockOutput.args.command = `FOO=bar ${snipBin} go test`
+    await toolExecuteBefore(mockInput, mockOutput)
+    expect(mockOutput.args.command).toBe(`FOO=bar ${snipBin} go test`)
+  })
+
+  it("should not double prefix in chained segment (bare)", async () => {
+    mockOutput.args.command = "cd /tmp && snip ls"
+    await toolExecuteBefore(mockInput, mockOutput)
+    expect(mockOutput.args.command).toBe("cd /tmp && snip ls")
+  })
+
+  it("should not double prefix in chained segment (absolute path)", async () => {
+    mockOutput.args.command = `cd /tmp && ${snipBin} ls`
+    await toolExecuteBefore(mockInput, mockOutput)
+    expect(mockOutput.args.command).toBe(`cd /tmp && ${snipBin} ls`)
+  })
+
   it("should not modify non-bash tool calls", async () => {
     mockInput.tool = "read"
     mockOutput.args.command = "go test"

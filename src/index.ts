@@ -21,6 +21,17 @@ function snipCommand(command: string): string {
   const bareCmd = command.slice(envPrefix.length).trim()
   if (!bareCmd) return command
   if (UNPROXYABLE_COMMANDS.has(bareCmd.split(/\s+/)[0])) return command
+
+  // Avoid double-prefixing commands that already invoke snip/snipBin
+  if (
+    bareCmd === "snip" ||
+    bareCmd.startsWith("snip ") ||
+    bareCmd === snipBin ||
+    bareCmd.startsWith(snipBin + " ")
+  ) {
+    return command
+  }
+
   return `${envPrefix}${snipBin} ${bareCmd}`
 }
 
